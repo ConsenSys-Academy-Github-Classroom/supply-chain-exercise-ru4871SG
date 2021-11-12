@@ -82,14 +82,31 @@ contract SupplyChain {
   // that an Item is for sale. Hint: What item properties will be non-zero when
   // an Item has been added?
 
-  // modifier forSale
-  // modifier sold(uint _sku) 
-  // modifier shipped(uint _sku) 
-  // modifier received(uint _sku) 
+  modifier forSale(uint _sku) {
+    require(items[_sku].state == State.ForSale);
+    _;
+  }
 
-  constructor() public {
+  modifier sold(uint _sku) {
+    require(items[_sku].state == State.Sold);
+    _;
+  }
+
+  modifier shipped(uint _sku) {
+    require(items[_sku].state == State.Shipped);
+    _;
+  }
+
+  modifier received(uint _sku) {
+    require(items[_sku].state == State.Received);
+    _;
+  }
+
+  constructor() {
     // 1. Set the owner to the transaction sender
-    // 2. Initialize the sku count to 0. Question, is this necessary?
+    owner = msg.sender;
+    // 2. Initialize the sku count to 0. Question, is this necessary? i believe yes
+    skuCount = 0;
   }
 
   function addItem(string memory _name, uint _price) public returns (bool) {
@@ -97,20 +114,20 @@ contract SupplyChain {
     // 2. Increment the skuCount by one
     // 3. Emit the appropriate event
     // 4. return true
-
-    // hint:
-    // items[skuCount] = Item({
-    //  name: _name, 
-    //  sku: skuCount, 
-    //  price: _price, 
-    //  state: State.ForSale, 
-    //  seller: msg.sender, 
-    //  buyer: address(0)
-    //});
-    //
-    //skuCount = skuCount + 1;
-    // emit LogForSale(skuCount);
-    // return true;
+   
+    
+    items[skuCount] = Item({
+      name: _name, 
+      sku: skuCount, 
+      price: _price, 
+      state: State.ForSale, 
+      seller: payable(msg.sender), 
+      buyer: payable(address(0))
+    });
+    
+    skuCount = skuCount + 1;
+    emit LogForSale(skuCount, State.ForSale, msg.sender);
+    return true;
   }
 
   // Implement this buyItem function. 
@@ -124,21 +141,34 @@ contract SupplyChain {
   //    - check the value after the function is called to make 
   //      sure the buyer is refunded any excess ether sent. 
   // 6. call the event associated with this function!
-  function buyItem(uint sku) public {}
+  function buyItem(uint sku) public payable forSale(sku) paidEnough(items[sku].price) checkValue(sku) 
+  { //1 & 5
+    payable(items[sku].seller).transfer(items[sku].price); //2
+    items[sku].buyer = payable(msg.sender); //3
+    items[sku].state = State.Sold; //4
+
+    emit LogSold(skuCount, State.Sold, msg.sender); //6
+  }
 
   // 1. Add modifiers to check:
   //    - the item is sold already 
   //    - the person calling this function is the seller. 
   // 2. Change the state of the item to shipped. 
   // 3. call the event associated with this function!
-  function shipItem(uint sku) public {}
+  function shipItem(uint sku) public sold(sku) verifyCaller(items[sku].seller) { //1
+      items[sku].state = State.Shipped; //2
+      emit LogShipped(skuCount, State.Shipped, msg.sender); //3
+  }
 
   // 1. Add modifiers to check 
   //    - the item is shipped already 
   //    - the person calling this function is the buyer. 
   // 2. Change the state of the item to received. 
   // 3. Call the event associated with this function!
-  function receiveItem(uint sku) public {}
+  function receiveItem(uint sku) public shipped(sku) verifyCaller(items[sku].buyer) { //1
+      items[sku].state = State.Received; //2
+      emit LogReceived(skuCount, State.Received, msg.sender); //3
+  }
 
   // Uncomment the following code block. it is needed to run tests
   function fetchItem(uint _sku) public view 
