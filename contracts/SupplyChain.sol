@@ -4,26 +4,43 @@ pragma solidity ^0.8.0;
 contract SupplyChain {
 
   // <owner>
+  address public owner;
 
   // <skuCount>
+  uint public skuCount;
 
   // <items mapping>
+  mapping(uint => Item) items;
 
-  // <enum State: ForSale, Sold, Shipped, Received>
+  enum State {ForSale,
+              Sold,
+              Shipped, 
+              Received
+            }
 
-  // <struct Item: name, sku, price, state, seller, and buyer>
+  struct Item {string name;
+                uint sku;
+                uint price;
+                State state;
+                address payable seller;
+                address payable buyer;
+              }
   
   /* 
    * Events
    */
 
   // <LogForSale event: sku arg>
+  event LogForSale(uint sku, State state, address account);
 
   // <LogSold event: sku arg>
+  event LogSold(uint sku, State state, address account);
 
   // <LogShipped event: sku arg>
+  event LogShipped(uint sku, State state, address account);
 
   // <LogReceived event: sku arg>
+  event LogReceived(uint sku, State state, address account);
 
 
   /* 
@@ -32,24 +49,29 @@ contract SupplyChain {
 
   // Create a modifer, `isOwner` that checks if the msg.sender is the owner of the contract
 
-  // <modifier: isOwner
+  modifier isOwner (address _owner) {
+    require(owner == _owner, "onlyOwner");
+    _;
+  }
 
   modifier verifyCaller (address _address) { 
-    // require (msg.sender == _address); 
+    require (msg.sender == _address); 
     _;
   }
 
   modifier paidEnough(uint _price) { 
-    // require(msg.value >= _price); 
+    require(msg.value >= _price); 
     _;
   }
 
   modifier checkValue(uint _sku) {
     //refund them after pay for item (why it is before, _ checks for logic before func)
     _;
-    // uint _price = items[_sku].price;
-    // uint amountToRefund = msg.value - _price;
-    // items[_sku].buyer.transfer(amountToRefund);
+    uint _price = items[_sku].price;
+    uint amountToRefund = msg.value - _price;
+    if(amountToRefund > 0) {
+    items[_sku].buyer.transfer(amountToRefund);
+    }
   }
 
   // For each of the following modifiers, use what you learned about modifiers
@@ -119,15 +141,15 @@ contract SupplyChain {
   function receiveItem(uint sku) public {}
 
   // Uncomment the following code block. it is needed to run tests
-  /* function fetchItem(uint _sku) public view */ 
-  /*   returns (string memory name, uint sku, uint price, uint state, address seller, address buyer) */ 
-  /* { */
-  /*   name = items[_sku].name; */
-  /*   sku = items[_sku].sku; */
-  /*   price = items[_sku].price; */
-  /*   state = uint(items[_sku].state); */
-  /*   seller = items[_sku].seller; */
-  /*   buyer = items[_sku].buyer; */
-  /*   return (name, sku, price, state, seller, buyer); */
-  /* } */
+  function fetchItem(uint _sku) public view 
+     returns (string memory name, uint sku, uint price, uint state, address seller, address buyer)  
+   { 
+    name = items[_sku].name; 
+    sku = items[_sku].sku; 
+    price = items[_sku].price; 
+    state = uint(items[_sku].state); 
+    seller = items[_sku].seller; 
+    buyer = items[_sku].buyer; 
+    return (name, sku, price, state, seller, buyer); 
+    }
 }
